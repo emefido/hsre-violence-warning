@@ -220,3 +220,43 @@ def test_metrics_row_reports_operational_columns(tmp_path, monkeypatch):
     assert "precision_at_2pct" in row
     assert "recall_at_2pct" in row
     assert "ap_ci_low" in row
+
+
+def test_dispersion_is_estimated_not_defaulted():
+    """statsmodels defaults alpha to 1.0 and warns. Violence counts are
+    over-dispersed to a degree that varies by outcome, so the parameter is
+    estimated from the data."""
+    import numpy as np
+
+    rng = np.random.default_rng(11)
+    # Over-dispersed: variance well above the mean.
+    over = pd.Series(rng.negative_binomial(2, 0.2, 5000))
+    alpha_over = CountBaseline._estimate_alpha(over)
+    assert alpha_over > 0.1
+
+    # Equidispersed Poisson data should give a near-zero estimate.
+    poisson = pd.Series(rng.poisson(3, 5000))
+    alpha_poisson = CountBaseline._estimate_alpha(poisson)
+    assert alpha_poisson < 0.05
+
+
+def test_dispersion_estimate_handles_degenerate_input():
+    assert CountBaseline._estimate_alpha(pd.Series([0, 0, 0])) == 1.0
+    assert CountBaseline._estimate_alpha(pd.Series([2, 2, 2])) > 0
+
+
+def test_count_baseline_emits_no_dispersion_warning(tmp_path, monkeypatch):
+    monkeypatch.setattr(ledger, "LEDGER_PATH", tmp_path / "l.jsonl")
+    import warnings
+
+    panel = _labelled_panel()
+    split = temporal_split(
+        panel, pd.Timestamp("2017-12-30"), pd.Timestamp("2018-12-29"),
+        pd.Timestamp("2019-01-05"),
+    )
+    features = lag_only_features(panel)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        CountBaseline().fit(split.train, features, "escalation")
+    messages = [str(w.message) for w in caught]
+    assert not any("dispersion parameter alpha not set" in m for m in messages)

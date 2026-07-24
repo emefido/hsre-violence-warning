@@ -123,11 +123,33 @@ class CountBaseline:
         X = sm.add_constant(train[self._used].fillna(0).astype(float), has_constant="add")
         y = train[outcome].astype(int)
 
+        # Estimate the dispersion parameter from the data rather than taking
+        # the library default of 1.0. Violence counts are over-dispersed and
+        # the degree varies by outcome, so a fixed alpha misstates the
+        # variance and the library warns about exactly this.
+        alpha = self._estimate_alpha(y)
         try:
-            self._result = sm.GLM(y, X, family=sm.families.NegativeBinomial()).fit()
+            self._result = sm.GLM(
+                y, X, family=sm.families.NegativeBinomial(alpha=alpha)
+            ).fit()
         except Exception:  # noqa: BLE001 - fall back rather than fail the run
             self._result = sm.GLM(y, X, family=sm.families.Poisson()).fit()
         return self
+
+    @staticmethod
+    def _estimate_alpha(y: pd.Series) -> float:
+        """Method-of-moments dispersion estimate.
+
+        For a negative binomial, variance = mean + alpha * mean^2. Solving for
+        alpha gives (variance - mean) / mean^2. Values at or below zero mean
+        the data are not over-dispersed, so a small positive floor is used.
+        """
+        mean = float(y.mean())
+        variance = float(y.var())
+        if mean <= 0:
+            return 1.0
+        alpha = (variance - mean) / (mean**2)
+        return max(alpha, 1e-6)
 
     def predict_scores(self, frame: pd.DataFrame, features: list[str]) -> np.ndarray:  # noqa: ARG002
         import statsmodels.api as sm

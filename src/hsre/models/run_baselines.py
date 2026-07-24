@@ -29,9 +29,23 @@ TABLES_DIR = REPO_ROOT / "reports" / "tables"
 
 
 def load_acled(path: Path) -> pd.DataFrame:
-    frame = pd.read_excel(path) if path.suffix in {".xlsx", ".xls"} else pd.read_csv(path)
+    if path.suffix in {".xlsx", ".xls"}:
+        try:
+            frame = pd.read_excel(path)
+        except ImportError as exc:
+            raise SystemExit(
+                "Reading .xlsx requires openpyxl, which is not installed.\n"
+                "  pip install openpyxl\n"
+                "or reinstall the project dependencies:\n"
+                '  pip install -e ".[dev]"'
+            ) from exc
+    else:
+        frame = pd.read_csv(path)
+
     if "COUNTRY" in frame.columns:
         frame = frame.loc[frame["COUNTRY"] == "Nigeria"]
+    if frame.empty:
+        raise SystemExit(f"no Nigerian rows found in {path.name}")
     return frame.copy()
 
 

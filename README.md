@@ -66,8 +66,19 @@ repository ships retrieval scripts, pinned versions and checksums instead.
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env    # then fill in UCDP and Census credentials
+cp .env.example .env    # then fill in credentials
 ```
+
+If you already have an environment from an earlier stage, reinstall after
+pulling so newly declared dependencies are picked up:
+
+```bash
+pip install -e ".[dev]"
+```
+
+`tests/test_dependencies.py` checks that every declared dependency imports and
+that no third-party import in `src/` is undeclared, so a package that happens
+to be present on the author's machine cannot silently become a requirement.
 
 Only UCDP and the Census API require credentials. Every other source is open.
 

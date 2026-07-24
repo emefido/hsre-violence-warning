@@ -17,7 +17,8 @@ dependencies = [
     "lightgbm>=4.0",
     "statsmodels>=0.14",
     "matplotlib>=3.7",
-    "pyarrow>=14.0",
+    # Required to read the ACLED aggregated file, which ships as xlsx.
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]

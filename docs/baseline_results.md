@@ -68,3 +68,17 @@ its Nigerian sourcing. The second is itself a data-health condition of exactly
 the kind H4 concerns, and it is reported rather than adjusted away. Any claim
 about deteriorating security in Nigeria drawn from this panel must carry that
 caveat.
+
+
+## Reproducing
+
+```bash
+pip install -e ".[dev]"
+PYTHONPATH=src python -m hsre.models.run_baselines --data path/to/acled.xlsx
+```
+
+The negative binomial dispersion parameter is estimated from the training data
+by method of moments rather than taking the library default of 1.0, since the
+degree of over-dispersion differs between the two outcomes. The effect on
+reported metrics is below the third decimal place, but the estimate is used
+because a fixed value misstates the variance.
