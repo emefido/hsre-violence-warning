@@ -83,3 +83,19 @@ def test_modules_imported_in_source_are_declared():
             missing.add(module)
 
     assert not missing, f"undeclared third-party imports in src/: {sorted(missing)}"
+
+
+def test_lightgbm_import_error_is_diagnosable():
+    """LightGBM links against OpenMP, which macOS does not ship. The wheel
+    installs but the shared library fails to load, producing an OSError
+    rather than a ModuleNotFoundError. The README records the fix; this test
+    documents the failure mode so it is recognised rather than puzzled over."""
+    try:
+        import lightgbm  # noqa: F401
+    except OSError as exc:
+        message = str(exc)
+        if "libomp" in message:
+            pytest.fail(
+                "LightGBM cannot load OpenMP. On macOS run: brew install libomp"
+            )
+        raise

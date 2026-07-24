@@ -80,6 +80,24 @@ pip install -e ".[dev]"
 that no third-party import in `src/` is undeclared, so a package that happens
 to be present on the author's machine cannot silently become a requirement.
 
+### macOS: LightGBM requires OpenMP
+
+LightGBM's compiled library links against OpenMP, which Apple does not ship.
+The Python wheel installs successfully but fails at import with
+
+```
+OSError: dlopen(.../lib_lightgbm.dylib): Library not loaded: @rpath/libomp.dylib
+```
+
+Install it once:
+
+```bash
+brew install libomp
+```
+
+Linux distributions and the manylinux wheels bundle OpenMP, so this affects
+macOS only.
+
 Only UCDP and the Census API require credentials. Every other source is open.
 
 UCDP is reachable by two routes and defaults to the one needing no
