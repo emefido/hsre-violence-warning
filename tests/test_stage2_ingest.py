@@ -713,3 +713,125 @@ def test_coverage_ratio_is_computed():
     secondary = pd.DataFrame({"ucdp": [100]}, index=["Lagos"])
     merged = compare(primary, secondary, "nw", "ucdp")
     assert merged.loc["Lagos", "ratio"] == 10.0
+
+
+# --- ACLED adapter -------------------------------------------------------
+
+
+def test_acled_api_route_preserves_lga_and_narratives():
+    """The aggregated bulk file is admin1 only. LGA analysis, actor-based
+    youth identification and narrative screening all need the API route."""
+    config = load_config()
+    fields = config.sources["acled"].route_setting("fields")
+    for required in ("admin2", "notes", "actor1", "sub_event_type", "fatalities"):
+        assert required in fields, f"API field list is missing {required}"
+
+
+def test_acled_builds_its_dedicated_adapter():
+    from hsre.ingest import acled as acled_mod
+
+    config = load_config()
+    adapter = adapters.build_adapter(config.sources["acled"])
+    assert isinstance(adapter, acled_mod.AcledApiAdapter)
+
+
+def test_acled_bulk_route_builds_bulk_adapter():
+    from hsre.ingest import acled as acled_mod
+
+    config = load_config()
+    source = Source(**{**config.sources["acled"].__dict__, "active_route": "bulk"})
+    adapter = adapters.build_adapter(source)
+    assert isinstance(adapter, acled_mod.AcledBulkAdapter)
+
+
+def test_acled_missing_credentials_fail_without_retry(monkeypatch, tmp_path):
+    """A missing credential is not transient."""
+    from hsre.ingest import acled as acled_mod
+
+    monkeypatch.delenv("ACLED_USERNAME", raising=False)
+    monkeypatch.delenv("ACLED_PASSWORD", raising=False)
+    with pytest.raises(acled_mod.AcledAuthError, match="credentials missing"):
+        acled_mod.get_access_token(cache_path=tmp_path / "absent.json")
+
+
+def test_acled_token_cache_is_reused(tmp_path):
+    from hsre.ingest import acled as acled_mod
+
+    cache = tmp_path / "token.json"
+    acled_mod._write_cached_token(cache, "cached-token", expires_in=3600)
+    # No credentials set, so a cache miss would raise.
+    assert acled_mod.get_access_token(cache_path=cache) == "cached-token"
+
+
+def test_acled_expired_token_is_not_reused(tmp_path, monkeypatch):
+    from hsre.ingest import acled as acled_mod
+
+    cache = tmp_path / "token.json"
+    acled_mod._write_cached_token(cache, "stale-token", expires_in=-10)
+    monkeypatch.delenv("ACLED_USERNAME", raising=False)
+    with pytest.raises(acled_mod.AcledAuthError):
+        acled_mod.get_access_token(cache_path=cache)
+
+
+def test_acled_query_filters_to_nigeria_and_window():
+    from hsre.ingest import acled as acled_mod
+
+    config = load_config()
+    adapter = acled_mod.AcledApiAdapter(config.sources["acled"], token="t")
+    params = adapter.build_params(date(2016, 1, 1), date(2024, 12, 31), page=1)
+    assert params["country"] == "Nigeria"
+    assert params["event_date"] == "2016-01-01|2024-12-31"
+    assert params["event_date_where"] == "BETWEEN"
+    assert "admin2" in params["fields"]
+
+
+def test_acled_pagination_stops_on_short_page(monkeypatch):
+    from hsre.ingest import acled as acled_mod
+
+    config = load_config()
+    adapter = acled_mod.AcledApiAdapter(config.sources["acled"], token="t")
+    adapter.page_limit = 3
+
+    pages = {
+        1: [{"event_id_cnty": f"NGA{i}"} for i in range(3)],
+        2: [{"event_id_cnty": "NGA4"}],
+    }
+    seen = []
+
+    def fake_get(url, params, headers, timeout):
+        page = params["page"]
+        seen.append(page)
+        return FakeResponse({"success": True, "data": pages.get(page, [])})
+
+    monkeypatch.setattr(acled_mod.requests, "get", fake_get)
+    payload = adapter.fetch_payload(None, None)
+    assert seen == [1, 2]
+    assert adapter.count_records(payload) == 4
+
+
+def test_acled_auth_failure_is_not_retried(monkeypatch):
+    from hsre.ingest import acled as acled_mod
+
+    config = load_config()
+    adapter = acled_mod.AcledApiAdapter(config.sources["acled"], token="bad")
+
+    def fake_get(url, params, headers, timeout):
+        return FakeResponse({}, status=401)
+
+    monkeypatch.setattr(acled_mod.requests, "get", fake_get)
+    with pytest.raises(acled_mod.AcledAuthError, match="401"):
+        adapter.fetch_payload(None, None)
+
+
+def test_acled_reported_failure_raises(monkeypatch):
+    from hsre.ingest import acled as acled_mod
+
+    config = load_config()
+    adapter = acled_mod.AcledApiAdapter(config.sources["acled"], token="t")
+
+    def fake_get(url, params, headers, timeout):
+        return FakeResponse({"success": False, "messages": ["quota exceeded"]})
+
+    monkeypatch.setattr(acled_mod.requests, "get", fake_get)
+    with pytest.raises(RuntimeError, match="quota exceeded"):
+        adapter.fetch_payload(None, None)

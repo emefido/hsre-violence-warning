@@ -68,9 +68,91 @@ ucdp_ged:
     best: int
     type_of_violence: int
 
-nigeria_watch:
+acled:
   setting: nigeria
   role: outcome
+  # PRIMARY Nigerian outcome source.
+  #
+  # ACLED codes six event types with no fatality minimum, including riots
+  # (with a mob violence sub-type) and violence against civilians (with an
+  # abduction sub-type). Those categories carry the cultism, communal and
+  # kidnapping violence that this study is about and that UCDP's
+  # organised-violence threshold excludes.
+  #
+  # Observed 2016-2024 comparison against UCDP for Nigeria:
+  #   Katsina    13 -> 1504   (116x)
+  #   Zamfara    27 -> 1684    (62x)
+  #   FCT        26 -> 1599    (62x)
+  #   Niger      31 -> 1202    (39x)
+  #   Borno    4061 -> 4568   (1.1x)
+  # Borno's share of all Nigerian events falls from 56.5% to 14.4%. The gap is
+  # non-insurgency violence. The comparison is reported as a finding.
+  route: api
+  active_route: api
+  routes:
+    api:
+      # Full disaggregated events: admin2 (LGA), actors, and event narratives.
+      base_url: https://acleddata.com/api/acled/read
+      country_name: Nigeria
+      token_env: ACLED_USERNAME
+      # Fields kept deliberately narrow. Requesting every column on a
+      # multi-year pull is slow and most columns are unused.
+      fields:
+        - event_id_cnty
+        - event_date
+        - year
+        - disorder_type
+        - event_type
+        - sub_event_type
+        - actor1
+        - assoc_actor_1
+        - inter1
+        - actor2
+        - inter2
+        - civilian_targeting
+        - admin1
+        - admin2
+        - admin3
+        - location
+        - latitude
+        - longitude
+        - geo_precision
+        - time_precision
+        - source_scale
+        - notes
+        - fatalities
+        - tags
+    bulk:
+      # Weekly aggregated regional file, no credentials required.
+      # Already at week x admin1 x event type. No LGA, actors or narratives.
+      base_url: https://acleddata.com/download/todays-data/africa-aggregated
+  cadence: weekly
+  freshness_slo_hours: 168
+  volume_floor: 0.75
+  required: true
+  notes: >
+    Registration is free and self-service at acleddata.com/register.
+    Authentication is OAuth2 password grant; set ACLED_USERNAME and
+    ACLED_PASSWORD in .env. The bulk route needs no credentials but loses
+    LGA resolution, actor names and event narratives.
+  schema:
+    event_id_cnty: str
+    event_date: date
+    event_type: str
+    sub_event_type: str
+    admin1: str
+    admin2: str
+    fatalities: int
+    latitude: float
+    longitude: float
+
+nigeria_watch:
+  setting: nigeria
+  # Breadth check on ACLED. Nigeria Watch records roughly 169,000 violent
+  # deaths from 2006-2021 and attributes more to crime than to insurgency,
+  # extending into interpersonal and criminal killing that even ACLED's
+  # political-violence framing does not fully cover. Access is by request.
+  role: outcome_secondary
   route: export
   base_url: http://www.nigeriawatch.org
   # PRIMARY Nigerian outcome source.
@@ -88,7 +170,7 @@ nigeria_watch:
   cadence: monthly
   freshness_slo_hours: 1080
   volume_floor: 0.70
-  required: true
+  required: false
   notes: >
     Open access to sources and basic functionality; bulk export requires an
     account. Download from nigeriawatch.org and place the file in

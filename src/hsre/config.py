@@ -192,10 +192,33 @@ def load_thresholds() -> dict[str, Any]:
     cut = float(outcome.get("percentile_cut", 0))
     if not 0 < cut < 1:
         raise ConfigError("outcome.percentile_cut must lie in (0, 1)")
-    for setting in ("nigeria", "usa"):
-        combine = outcome.get(setting, {}).get("combine")
-        if combine not in {"and", "or"}:
-            raise ConfigError(f"outcome.{setting}.combine must be 'and' or 'or'")
+
+    # ACLED weeks begin on Saturday. A mismatched anchor silently produces an
+    # empty panel rather than an error, so the value is validated here.
+    anchor = outcome.get("week_anchor")
+    if not anchor or not str(anchor).startswith("W-"):
+        raise ConfigError("outcome.week_anchor must be a pandas weekly alias, e.g. W-SAT")
+
+    nigeria = outcome.get("nigeria", {})
+    for name in ("primary", "youth"):
+        block = nigeria.get(name)
+        if not block:
+            raise ConfigError(f"outcome.nigeria.{name} is missing")
+        if not (block.get("event_types") or block.get("sub_event_types")):
+            raise ConfigError(
+                f"outcome.nigeria.{name} must list event_types or sub_event_types"
+            )
+        if int(block.get("min_future_events", 0)) < 1:
+            raise ConfigError(f"outcome.nigeria.{name}.min_future_events must be >= 1")
+        block_cut = float(block.get("percentile_cut", 0))
+        if not 0 < block_cut < 1:
+            raise ConfigError(f"outcome.nigeria.{name}.percentile_cut must lie in (0, 1)")
+        if "require_lethal" not in block:
+            raise ConfigError(f"outcome.nigeria.{name}.require_lethal must be set")
+
+    usa = outcome.get("usa", {})
+    if usa.get("combine") not in {"and", "or"}:
+        raise ConfigError("outcome.usa.combine must be 'and' or 'or'")
 
     return raw
 

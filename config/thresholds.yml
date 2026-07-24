@@ -14,30 +14,64 @@ outcome:
   horizon_days: 14
   baseline_window_weeks: 12
   percentile_cut: 0.90
-  # Minimum future events for a week to count as escalation.
+  # ACLED weeks begin on Saturday. A Monday-aligned grid produces zero overlap
+  # and a silently empty panel, so the week anchor is configured rather than
+  # assumed.
+  week_anchor: W-SAT
+
+  # Two Nigerian outcomes are constructed.
   #
-  # Required because the panel is sparse. Nigerian state-weeks average roughly
-  # 0.28 events, and the trailing 12-week median is zero in over 90% of them.
-  # Without a floor, any single event exceeds a zero baseline and the outcome
-  # measures presence of violence rather than escalation, which is a different
-  # research question. Set from the diagnostic in
-  # hsre.validate.outcome_check before freezing.
-  min_future_events: 2
-  # Nigeria: escalation if next 14 days contain a lethal event with fatalities
-  # above the trailing 12-week median, OR event count reaches the locality's
-  # 90th percentile.
-  # USA: escalation if next 14 days' homicide/aggravated assault/robbery count
-  # exceeds the trailing 12-week median AND reaches the historical 90th pct.
+  # primary   serious violence: violence against civilians, battles, riots.
+  #           Comparable to conventional conflict-forecasting targets.
+  # youth     the subset this study is named for: mob violence, violent
+  #           demonstration, abduction, force against protesters, sexual
+  #           violence. Excludes most insurgency. Notably, its most affected
+  #           locality is the Federal Capital Territory rather than Borno.
+  #
+  # Thresholds are set from observed base rates on the 2016-2024 ACLED panel.
+  # See docs/outcome_calibration.md.
   nigeria:
-    require_lethal: true
-    combine: or
+    primary:
+      event_types:
+        - Violence against civilians
+        - Battles
+        - Riots
+      min_future_events: 4
+      percentile_cut: 0.90
+      require_lethal: true
+      observed_base_rate: 0.218
+    youth:
+      sub_event_types:
+        - Mob violence
+        - Violent demonstration
+        - Abduction/forced disappearance
+        - Excessive force against protesters
+        - Protest with intervention
+        - Sexual violence
+      min_future_events: 2
+      percentile_cut: 0.90
+      # Mob violence, abduction and demonstration policing are frequently
+      # non-fatal. Requiring a death would discard most of the outcome and
+      # reintroduce the insurgency bias this outcome exists to avoid.
+      require_lethal: false
+      observed_base_rate: 0.170
+
+  # Event types excluded from both outcomes, with reasons.
+  excluded_event_types:
+    Protests: >
+      Overwhelmingly peaceful. Enters the panel as a leading predictor rather
+      than an outcome, following the protest-to-conflict literature.
+    Strategic developments: >
+      Arrests, agreements, headquarters establishment. Not violence.
+    Explosions/Remote violence: >
+      Air strikes, IEDs and suicide bombing. Almost entirely insurgency and
+      counter-insurgency, which is the bias the youth outcome avoids.
+
   usa:
     require_lethal: false
     combine: and
     offense_codes: [09A, 09B, 13A, 120]
   severe_event:
-    # Severe escalation weeks are the subset used for the recall constraint
-    # in the two-part error budget.
     min_fatalities: 5
 
 youth:

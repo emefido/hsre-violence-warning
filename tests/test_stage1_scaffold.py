@@ -77,16 +77,18 @@ def test_config_assembles():
     assert "fbi_nibrs" in config.required_sources("usa")
 
 
-def test_nigeria_watch_is_the_primary_nigerian_outcome():
+def test_acled_is_the_primary_nigerian_outcome():
     """UCDP codes organised political violence and omits most cultism,
-    communal and criminal killing. Relying on it alone would make the
-    Nigerian panel an insurgency study rather than a youth and community
-    violence study."""
+    communal, mob and kidnapping violence. Building the Nigerian panel on it
+    would produce an insurgency study rather than a youth and community
+    violence study: Borno holds 56.5% of Nigerian UCDP events against 14.4%
+    of ACLED events over the same window."""
     config = load_config()
-    assert "nigeria_watch" in config.required_sources("nigeria")
-    assert config.sources["nigeria_watch"].role == "outcome"
-    assert config.sources["ucdp_ged"].role == "outcome_secondary"
-    assert not config.sources["ucdp_ged"].required
+    assert "acled" in config.required_sources("nigeria")
+    assert config.sources["acled"].role == "outcome"
+    for secondary in ("ucdp_ged", "nigeria_watch"):
+        assert config.sources[secondary].role == "outcome_secondary"
+        assert not config.sources[secondary].required
 
 
 def test_bad_percentile_is_rejected(tmp_path, monkeypatch):

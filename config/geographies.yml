@@ -5,12 +5,21 @@
 nigeria:
   primary_unit: state
   robustness_unit: lga
+  # LGA analysis requires the ACLED API route, which returns admin2. The bulk
+  # aggregated file is admin1 only. Where the bulk route is active, LGA
+  # robustness analysis is unavailable rather than silently degraded.
+  lga_source_field: admin2
+  lga_requires_route: api
+  n_expected_lgas: 774
   n_expected_states: 37   # 36 states plus FCT
   crosswalk_file: data/metadata/ng_state_crosswalk.csv
   min_match_rate: 0.95
   notes: >
-    State and LGA naming is inconsistent across UCDP, Nigeria Watch and
-    WorldPop. The crosswalk maps all observed spellings to a canonical code.
+    State naming differs across sources. Observed variants include ACLED's
+    "Nassarawa" against UCDP's "Nasarawa state", and ACLED's "Federal Capital
+    Territory" against UCDP's "Federal Capital territory" and Nigeria Watch's
+    "FCT (Abuja)". The crosswalk maps every observed spelling to a canonical
+    code and reports its match rate as a health metric.
 
 usa:
   primary_unit: county

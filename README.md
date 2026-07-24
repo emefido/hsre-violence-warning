@@ -150,24 +150,52 @@ MIT for the code. Data sources retain their own licences; see
 
 ## Outcome source hierarchy for Nigeria
 
-Nigeria Watch is the primary Nigerian outcome source and UCDP GED is the
-organised-violence subset. This is a data-driven decision rather than a
-preference.
+ACLED is the primary Nigerian outcome source. UCDP GED and Nigeria Watch are
+secondary, retained for the coverage comparison. This ordering follows from
+the data rather than from preference.
 
-UCDP codes organised political violence. In the ingested extract, Borno holds
-roughly half of all Nigerian UCDP events, and Kano, Katsina, Kebbi, Bauchi and
-the FCT produce no escalation weeks at all across 2016 to 2024. Zamfara, the
-centre of the banditry crisis, records fewer than 20 events over nine years.
-Those absences are false rather than informative: the violence is present but
-falls outside UCDP's inclusion criteria.
+UCDP codes organised political violence, and its Nigerian coverage is
+dominated by the Borno insurgency. Measured against ACLED over 2016 to 2024:
 
-Nigeria Watch records roughly 169,000 violent deaths from 2006 to 2021 and
-attributes more of them to crime than to insurgency, covering the cultism,
-communal, criminal and interpersonal killing that constitutes youth and
-community violence. It is press-derived, so coverage is uneven by region, and
-that bias is reported as a finding rather than corrected away.
+| State | UCDP | ACLED | Ratio |
+|---|---|---|---|
+| Katsina | 13 | 1,504 | 116x |
+| Zamfara | 27 | 1,684 | 62x |
+| FCT | 26 | 1,599 | 62x |
+| Niger | 31 | 1,202 | 39x |
+| Ekiti | 10 | 324 | 32x |
+| Borno | 4,061 | 4,568 | 1.1x |
+
+Borno's share of all Nigerian events falls from 56.5% under UCDP to 14.4%
+under ACLED. Borno itself barely moves, because UCDP already captures the
+insurgency well. The entire gap is non-insurgency violence, which is what this
+study is about.
+
+ACLED's sub-event types carry the research question directly: mob violence
+(1,698 events), abduction and forced disappearance (2,979), riots (2,609) and
+protests (6,168) over the same window.
+
+Nigeria Watch extends further into interpersonal and criminal killing, with
+roughly 169,000 violent deaths recorded from 2006 to 2021 and more attributed
+to crime than to insurgency. Access is by request. It serves as a breadth
+check on ACLED once obtained.
 
 Run `python -m hsre.validate.source_coverage` to reproduce the comparison.
+
+## LGA resolution and event narratives
+
+ACLED offers two routes and the choice matters:
+
+- **api** returns full disaggregated events including `admin2` (LGA),
+  `admin3`, actor names and event narratives. Requires free credentials.
+- **bulk** returns the weekly aggregated regional file, already at
+  week x admin1 x event type. No credentials, but no LGA, actors or
+  narratives.
+
+The API route is active by default because LGA robustness analysis and
+actor-based youth identification both depend on fields the aggregated file
+does not carry. Where the bulk route is active, LGA analysis is reported as
+unavailable rather than silently degraded.
 
 ## Diagnostics
 

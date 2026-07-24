@@ -281,10 +281,23 @@ ADAPTER_BY_ROUTE = {
     "export": ExportAdapter,
 }
 
+# Sources whose API contract differs enough to need a dedicated adapter.
+# ACLED uses OAuth2 password grant rather than a static token header.
+ADAPTER_BY_SOURCE = {
+    "acled": {"api": "AcledApiAdapter", "bulk": "AcledBulkAdapter"},
+}
+
 
 def build_adapter(source: Source, **kwargs) -> SourceAdapter:
     """Instantiate the adapter matching a source's active route."""
     route = source.effective_route
+
+    special = ADAPTER_BY_SOURCE.get(source.name, {}).get(route)
+    if special:
+        from hsre.ingest import acled as acled_mod
+
+        return getattr(acled_mod, special)(source, **kwargs)
+
     cls = ADAPTER_BY_ROUTE.get(route)
     if cls is None:
         raise ValueError(f"no adapter for route {route!r}")
