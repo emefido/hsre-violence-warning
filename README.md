@@ -80,23 +80,13 @@ pip install -e ".[dev]"
 that no third-party import in `src/` is undeclared, so a package that happens
 to be present on the author's machine cannot silently become a requirement.
 
-### macOS: LightGBM requires OpenMP
+### No compiled extensions required
 
-LightGBM's compiled library links against OpenMP, which Apple does not ship.
-The Python wheel installs successfully but fails at import with
-
-```
-OSError: dlopen(.../lib_lightgbm.dylib): Library not loaded: @rpath/libomp.dylib
-```
-
-Install it once:
-
-```bash
-brew install libomp
-```
-
-Linux distributions and the manylinux wheels bundle OpenMP, so this affects
-macOS only.
+The pipeline deliberately avoids libraries that link external compiled
+runtimes. Gradient boosting uses scikit-learn's `HistGradientBoostingClassifier`
+rather than LightGBM: the same histogram-based algorithm, but with no OpenMP
+dependency. The LightGBM wheel installs cleanly on macOS and then fails at
+import, which would break replication for reasons unrelated to the research.
 
 Only UCDP and the Census API require credentials. Every other source is open.
 
@@ -127,7 +117,9 @@ Each stage is verified before the next begins.
 | 5 | Locality-week panel builder | complete |
 | 6 | Feature construction | complete |
 | 7 | Baseline models | complete |
+| 8 | Main model and H1 ablation | complete |
 | 7 | Baseline models | complete |
+| 8 | Main model and H1 ablation | complete |
 | 7 | Main model and calibration | pending |
 | 8 | Alert-budget allocator and threshold regimes | pending |
 | 9 | Validation regimes and source-failure experiments | pending |
@@ -297,3 +289,24 @@ predicting no escalation everywhere scores 73%. Average precision is the
 headline metric, with lift against the base rate to expose no-skill models,
 and precision and recall at a fixed alert budget because that is what an
 institution can act on.
+
+
+## Main model
+
+```bash
+PYTHONPATH=src python -m hsre.models.run_model --data path/to/acled.xlsx
+```
+
+Writes `reports/tables/ablation.csv` and `model_comparison.csv`. Results and
+interpretation are in `docs/h1_results.md`.
+
+Gradient boosting uses scikit-learn's `HistGradientBoostingClassifier`.
+Capacity is selected on the validation period rather than defaulted, because
+the outcome is non-stationary: escalation rises from roughly 5% of
+locality-weeks in 2016 to 39% in 2024, and an unconstrained model memorises
+the training regime and transfers poorly.
+
+**H1 is not supported.** Multi-source features change average precision by
+−0.006 on the primary outcome and +0.005 on youth, with overlapping
+confidence intervals. Regularised logistic regression on event history alone
+outperforms every gradient boosting configuration on both outcomes.
