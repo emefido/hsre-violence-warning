@@ -119,12 +119,12 @@ Each stage is verified before the next begins.
 | 7 | Baseline models | complete |
 | 8 | Main model and H1 ablation | complete |
 | 9 | Alert budget allocator | complete |
+| 10 | Degradation and transfer validation | complete |
 | 7 | Baseline models | complete |
 | 8 | Main model and H1 ablation | complete |
 | 9 | Alert budget allocator | complete |
+| 10 | Degradation and transfer validation | complete |
 | 7 | Main model and calibration | pending |
-| 9 | Validation regimes and source-failure experiments | pending |
-| 10 | Results export | pending |
 
 ## Verification
 
@@ -333,3 +333,25 @@ severe-recall floor are jointly infeasible on this panel: capacity-constrained
 alerting catches under 25% of escalations, while reaching the recall floor
 requires roughly four times the permitted alert volume. That infeasibility is
 the finding.
+
+
+## Validation
+
+```bash
+PYTHONPATH=src python -m hsre.models.run_validation --data path/to/acled.xlsx
+```
+
+Writes `reports/tables/degradation.csv` and `geographic_transfer.csv`.
+Results are in `docs/validation_results.md`.
+
+**H4 is supported.** Localities that stop reporting cost 15 to 16% average
+precision, while losing auxiliary sources entirely costs under 1.5%.
+Degradation is gradual rather than abrupt, so a service can continue in a
+flag-raised state rather than abstaining.
+
+**Geographic transfer is near zero skill.** On held-out states, lift ranges
+from 0.97 to 1.19 against 1.96 for in-sample temporal performance. Nearly all
+apparent skill comes from learning each locality's own level rather than from
+a generalisable relationship. The model is a calibrated memory of which places
+are violent, which is useful for allocating mediators among known localities
+and close to useless for spotting a quiet locality about to deteriorate.
