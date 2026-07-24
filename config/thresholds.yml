@@ -1,0 +1,89 @@
+# Preregistered analytical decisions.
+# These are frozen before test-set analysis. Any change after freezing is
+# logged in docs/deviations.md with a date and reason.
+
+study_period:
+  start: 2016-01-01
+  end: 2024-12-31
+  # Final holdout is untouched until model selection completes.
+  train_end: 2021-12-31
+  validation_end: 2022-12-31
+  test_start: 2023-01-01
+
+outcome:
+  horizon_days: 14
+  baseline_window_weeks: 12
+  percentile_cut: 0.90
+  # Minimum future events for a week to count as escalation.
+  #
+  # Required because the panel is sparse. Nigerian state-weeks average roughly
+  # 0.28 events, and the trailing 12-week median is zero in over 90% of them.
+  # Without a floor, any single event exceeds a zero baseline and the outcome
+  # measures presence of violence rather than escalation, which is a different
+  # research question. Set from the diagnostic in
+  # hsre.validate.outcome_check before freezing.
+  min_future_events: 2
+  # Nigeria: escalation if next 14 days contain a lethal event with fatalities
+  # above the trailing 12-week median, OR event count reaches the locality's
+  # 90th percentile.
+  # USA: escalation if next 14 days' homicide/aggravated assault/robbery count
+  # exceeds the trailing 12-week median AND reaches the historical 90th pct.
+  nigeria:
+    require_lethal: true
+    combine: or
+  usa:
+    require_lethal: false
+    combine: and
+    offense_codes: [09A, 09B, 13A, 120]
+  severe_event:
+    # Severe escalation weeks are the subset used for the recall constraint
+    # in the two-part error budget.
+    min_fatalities: 5
+
+youth:
+  # Age is inconsistently observed in Nigerian event data. We do not treat all
+  # violence as youth violence where age is unknown. See manuscript limitations.
+  usa_age_min: 15
+  usa_age_max: 29
+  nigeria_protagonist_terms:
+    - cult
+    - student
+    - youth
+    - vigilante
+
+completeness:
+  # A locality-week enters the main sample only if these hold.
+  min_source_coverage: 0.80
+  usa_min_agency_reporting_continuity: 0.90
+  nigeria_min_geocoded_share: 0.70
+
+alert_budget:
+  # k expressed as a share of eligible localities, avoiding the presentation
+  # of any single untested institutional capacity as universal.
+  k_percentiles: [0.01, 0.02, 0.05, 0.10]
+  illustrative_absolute:
+    nigeria: 4
+    usa: 10
+  # Two linked constraints. A release fails if either is breached.
+  max_review_burden_per_week: 10
+  min_severe_recall: 0.70
+
+service_level_objectives:
+  data_freshness_pct: 0.95
+  source_completeness_floor: 0.80
+  pipeline_success_pct: 0.99
+  detection_at_capacity: 0.70
+  max_subgroup_recall_gap: 0.10
+
+evaluation:
+  primary_metric: average_precision
+  bootstrap_draws: 1000
+  confidence_level: 0.95
+  random_seed: 20260724
+
+failure_experiments:
+  # Controlled retrospective degradation. Tests H4 without live deployment.
+  gdelt_delay_weeks: [1, 2]
+  source_removal: [gdelt_events, nigeria_watch]
+  agency_masking_share: [0.10, 0.25, 0.50]
+  volume_truncation_share: [0.25, 0.50]

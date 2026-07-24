@@ -1,0 +1,29 @@
+# Spatial units for the locality-week panel.
+# Crosswalks are versioned and their match rates are emitted as health metrics,
+# because an unmatched record is a silently dropped observation.
+
+nigeria:
+  primary_unit: state
+  robustness_unit: lga
+  n_expected_states: 37   # 36 states plus FCT
+  crosswalk_file: data/metadata/ng_state_crosswalk.csv
+  min_match_rate: 0.95
+  notes: >
+    State and LGA naming is inconsistent across UCDP, Nigeria Watch and
+    WorldPop. The crosswalk maps all observed spellings to a canonical code.
+
+usa:
+  primary_unit: county
+  fallback_unit: agency
+  crosswalk_file: data/metadata/us_county_crosswalk.csv
+  min_match_rate: 0.95
+  notes: >
+    Agency jurisdictions do not align with county boundaries and change over
+    time. ORI to FIPS mapping is versioned by year.
+
+temporal:
+  unit: week
+  week_start: monday
+  # ISO week numbering. Forecast made at end of week t for weeks t+1 and t+2.
+  forecast_lag_weeks: 1
+  forecast_horizon_weeks: 2

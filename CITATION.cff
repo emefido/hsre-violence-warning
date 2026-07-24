@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Ezemenaka
+    given-names: Kingsley Emeka
+title: "hsre-violence-warning: reliability-engineered violence early warning"
+version: 0.1.0
+date-released: 2026-07-24
+license: MIT

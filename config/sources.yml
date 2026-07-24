@@ -1,0 +1,236 @@
+# Source registry.
+# One entry per data source. The adapter for each source reads only from here.
+# Fields:
+#   setting        which country panel the source feeds (nigeria, usa, both)
+#   role           outcome | signal | structural | benchmark
+#   route          api | bulk | export
+#   cadence        expected refresh interval, drives the freshness SLO
+#   freshness_slo_hours  max acceptable age before the source is flagged stale
+#   volume_floor   fraction of trailing 12-week median below which the source
+#                  is treated as thin rather than quiet. See manuscript s.
+#                  "Automated ingestion architecture".
+#   required       if true, a failure marks forecasts degraded rather than
+#                  proceeding silently
+#   schema         declared columns. Records violating this are quarantined,
+#                  never coerced.
+
+ucdp_ged:
+  setting: nigeria
+  # Secondary Nigerian outcome: the organised political violence subset.
+  # Retained because it is internationally comparable and well documented,
+  # and because contrasting it with Nigeria Watch shows directly how much
+  # youth and community violence conventional conflict datasets omit. That
+  # contrast is a finding in its own right.
+  role: outcome_secondary
+  # Two acquisition routes for the same data. The bulk CSV download requires no
+  # credential and the API maintainer confirms it carries the full data the API
+  # draws on. The API route is preferred once a token is available because a
+  # versioned API call is self-documenting in replication materials, but the
+  # pipeline must not be blocked on credential issuance.
+  #
+  # Set active_route to switch. Both are checksummed and pass through the same
+  # validation, so retrievals are directly comparable. Running both and
+  # comparing row counts is a genuine reproducibility check.
+  route: bulk
+  active_route: bulk
+  routes:
+    api:
+      base_url: https://ucdpapi.pcr.uu.se/api/gedevents
+      auth_header: x-ucdp-access-token
+      token_env: UCDP_API_TOKEN
+      daily_request_quota: 5000
+    bulk:
+      base_url: https://ucdp.uu.se/downloads/ged/ged261-csv.zip
+  base_url: https://ucdp.uu.se/downloads/ged/ged261-csv.zip
+  # The version is pinned regardless of route. A versioned retrieval returns
+  # identical data indefinitely, which is what keeps replication valid.
+  version: "26.1"
+  # Gleditsch and Ward country code for Nigeria. Applied server-side on the API
+  # route and as a post-download filter on the bulk route.
+  country_id: 475
+  cadence: monthly
+  freshness_slo_hours: 1080
+  volume_floor: 0.80
+  required: false
+  notes: >
+    StartDate and EndDate both filter on date_end. The bulk archive is global,
+    so the Nigeria filter is applied after download rather than in the request.
+  schema:
+    id: int
+    year: int
+    date_start: date
+    date_end: date
+    country: str
+    country_id: int
+    adm_1: str
+    latitude: float
+    longitude: float
+    best: int
+    type_of_violence: int
+
+nigeria_watch:
+  setting: nigeria
+  role: outcome
+  route: export
+  base_url: http://www.nigeriawatch.org
+  # PRIMARY Nigerian outcome source.
+  #
+  # UCDP codes organised political violence and therefore misses most of the
+  # violence this study is about. In the observed UCDP extract, Borno holds
+  # 49.5% of Nigerian events and Kano, Katsina, Kebbi, Bauchi and the FCT
+  # produce no escalation weeks at all across 2016-2024, which is false rather
+  # than informative. Nigeria Watch records roughly 169,000 violent deaths from
+  # 2006-2021 and attributes more of them to crime (51,425) than to insurgency
+  # (50,252), covering cultism, communal, criminal and interpersonal killing.
+  #
+  # Press-derived, so coverage is uneven by region. That bias is reported as a
+  # finding rather than corrected away.
+  cadence: monthly
+  freshness_slo_hours: 1080
+  volume_floor: 0.70
+  required: true
+  notes: >
+    Open access to sources and basic functionality; bulk export requires an
+    account. Download from nigeriawatch.org and place the file in
+    data/raw/_inbox/nigeria_watch/. Cause categories carry the youth and
+    community violence signal that UCDP omits.
+  schema:
+    id: int
+    date: date
+    state: str
+    lga: str
+    deaths: int
+    cause: str
+
+gdelt_events:
+  setting: both
+  role: signal
+  route: bulk
+  base_url: http://data.gdeltproject.org/gdeltv2
+  cadence: daily
+  freshness_slo_hours: 24
+  volume_floor: 0.60
+  required: false
+  notes: >
+    Measures media coverage, not violence. Source-density controls are
+    mandatory. See manuscript on coverage bias.
+  schema:
+    GLOBALEVENTID: int
+    SQLDATE: int
+    EventRootCode: str
+    QuadClass: int
+    GoldsteinScale: float
+    AvgTone: float
+    NumSources: int
+    ActionGeo_CountryCode: str
+    ActionGeo_ADM1Code: str
+    ActionGeo_Lat: float
+    ActionGeo_Long: float
+
+fbi_nibrs:
+  setting: usa
+  role: outcome
+  route: bulk
+  base_url: https://cde.ucr.cjis.gov
+  cadence: annual
+  freshness_slo_hours: 8760
+  volume_floor: 0.80
+  required: true
+  notes: >
+    Agency participation varies by year. Jurisdictions enter the main sample
+    only where reporting continuity exceeds the threshold in thresholds.yml.
+  schema:
+    incident_id: str
+    incident_date: date
+    ori: str
+    state_abbr: str
+    county_name: str
+    offense_code: str
+    victim_age: int
+    offender_age: int
+
+cdc_wisqars:
+  setting: usa
+  role: validation
+  route: bulk
+  base_url: https://wisqars.cdc.gov
+  cadence: annual
+  freshness_slo_hours: 8760
+  volume_floor: 0.90
+  required: false
+  schema:
+    year: int
+    state: str
+    age_group: str
+    intent: str
+    deaths: int
+    population: int
+
+worldpop:
+  setting: nigeria
+  role: structural
+  route: bulk
+  base_url: https://hub.worldpop.org
+  cadence: annual
+  freshness_slo_hours: 8760
+  volume_floor: 0.90
+  required: false
+  schema:
+    admin_code: str
+    year: int
+    total_population: float
+    youth_15_29: float
+
+acs:
+  setting: usa
+  role: structural
+  route: api
+  base_url: https://api.census.gov/data
+  cadence: annual
+  freshness_slo_hours: 8760
+  volume_floor: 0.90
+  required: false
+  schema:
+    state: str
+    county: str
+    year: int
+    poverty_rate: float
+    unemployment_rate: float
+    median_income: float
+    pop_15_29_share: float
+
+afrobarometer:
+  setting: nigeria
+  role: structural
+  route: export
+  base_url: https://www.afrobarometer.org
+  cadence: wave
+  freshness_slo_hours: 26280
+  volume_floor: 0.90
+  required: false
+  notes: Slow-moving context. Carried forward within the publication interval only.
+  schema:
+    region: str
+    round: int
+    year: int
+    trust_police: float
+    insecurity_perception: float
+    unemployment_concern: float
+
+views:
+  setting: nigeria
+  role: benchmark
+  route: api
+  base_url: https://api.viewsforecasting.org
+  cadence: monthly
+  freshness_slo_hours: 1080
+  volume_floor: 0.80
+  required: false
+  notes: >
+    Benchmark only. Must never enter the feature matrix. Enforced in
+    features/build.py by an explicit exclusion check.
+  schema:
+    month_id: int
+    country_id: int
+    step: int
+    prediction: float

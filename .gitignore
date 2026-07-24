@@ -1,0 +1,34 @@
+# Raw third-party data is never committed. Licences prohibit redistribution for
+# several sources, and the repository ships retrieval scripts and checksums
+# instead. See docs/data_dictionary.md.
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Run logs are machine-specific
+logs/*
+!logs/.gitkeep
+
+# Secrets never enter the repository
+.env
+*.token
+
+# Generated outputs
+reports/figures/*
+!reports/figures/.gitkeep
+reports/tables/*
+!reports/tables/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+.venv/
+venv/
