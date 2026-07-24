@@ -118,10 +118,11 @@ Each stage is verified before the next begins.
 | 6 | Feature construction | complete |
 | 7 | Baseline models | complete |
 | 8 | Main model and H1 ablation | complete |
+| 9 | Alert budget allocator | complete |
 | 7 | Baseline models | complete |
 | 8 | Main model and H1 ablation | complete |
+| 9 | Alert budget allocator | complete |
 | 7 | Main model and calibration | pending |
-| 8 | Alert-budget allocator and threshold regimes | pending |
 | 9 | Validation regimes and source-failure experiments | pending |
 | 10 | Results export | pending |
 
@@ -310,3 +311,25 @@ the training regime and transfers poorly.
 −0.006 on the primary outcome and +0.005 on youth, with overlapping
 confidence intervals. Regularised logistic regression on event history alone
 outperforms every gradient boosting configuration on both outcomes.
+
+
+## Alert budgets
+
+```bash
+PYTHONPATH=src python -m hsre.alerts.run_budget --data path/to/acled.xlsx --capacity 4
+```
+
+Writes `reports/tables/alert_regimes.csv`, `alert_budget_curve.csv` and
+`reports/figures/alert_budget_curve.png`. Results are in
+`docs/alert_budget_results.md`.
+
+Three regimes are compared: accuracy-optimised (the field default, which
+ignores capacity), recall-optimised (which produces alert fatigue), and
+alert-budgeted (where the threshold is a function of institutional capacity
+rather than model output).
+
+**No regime satisfies the error budget.** The burden ceiling and the
+severe-recall floor are jointly infeasible on this panel: capacity-constrained
+alerting catches under 25% of escalations, while reaching the recall floor
+requires roughly four times the permitted alert volume. That infeasibility is
+the finding.
