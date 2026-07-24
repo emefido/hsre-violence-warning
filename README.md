@@ -94,8 +94,9 @@ Each stage is verified before the next begins.
 | 1 | Repo skeleton, config, run ledger | complete |
 | 2 | Source adapters with retry, schema validation, quarantine | complete |
 | 3 | Health metrics and outcome diagnostics | complete |
-| 4 | Geographic crosswalks | pending |
-| 5 | Locality-week panel builder | pending |
+| 4 | Geographic crosswalks | complete |
+| 5 | Locality-week panel builder | complete |
+| 6 | Feature construction | complete |
 | 6 | Baseline models | pending |
 | 7 | Main model and calibration | pending |
 | 8 | Alert-budget allocator and threshold regimes | pending |
@@ -211,3 +212,40 @@ definition. Where the trailing baseline is zero, any single event counts as
 escalation and the outcome measures presence of violence rather than change in
 level. `min_future_events` in `config/thresholds.yml` sets the floor that
 prevents this.
+
+
+## Features
+
+Four families, all reading only information available by the end of week t.
+Escalation is labelled from weeks t+1 and t+2, so any feature that reads
+forward is leakage.
+
+- **lag** the locality's own event history: counts, fatalities, rolling sums
+  and means over 1, 4, 12 and 26 weeks, volatility, weeks since last event,
+  and short-run trend against the medium-run level.
+- **spatial** violence in the four nearest localities by centroid distance,
+  lagged identically. Centroids come from ACLED, so no external boundary file
+  is required.
+- **signal** protest and demonstration activity as leading indicators.
+  Protests are excluded from the outcome because they are overwhelmingly
+  peaceful, but their relationship to subsequent violence is what makes H1
+  testable.
+- **health** data-quality measures as predictors: reporting volume against the
+  locality's own norm, share of recent weeks with no event, and explicit
+  missingness flags. These exist because H4 claims forecast errors track
+  measurable data conditions, which is only testable if those conditions are
+  in the panel.
+
+Leakage prevention is structural rather than procedural. Every rolling window
+shifts by one before aggregating, and `assert_no_leakage` verifies the result
+empirically: it perturbs the outcome window and confirms no earlier feature
+value moves.
+
+### Undefined ratios
+
+Ratio features are undefined where the denominator is zero, which is common in
+quiet localities. Leaving them as NaN would cause complete-case analysis to
+delete exactly the localities conventional sources already omit. Each ratio is
+therefore filled with a stated value and paired with an indicator column, so
+the condition is learnable rather than the row disappearing. On the 2016-2024
+Nigeria panel this keeps 100% of labelled rows against 16% before the fix.
