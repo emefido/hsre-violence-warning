@@ -97,7 +97,8 @@ Each stage is verified before the next begins.
 | 4 | Geographic crosswalks | complete |
 | 5 | Locality-week panel builder | complete |
 | 6 | Feature construction | complete |
-| 6 | Baseline models | pending |
+| 7 | Baseline models | complete |
+| 7 | Baseline models | complete |
 | 7 | Main model and calibration | pending |
 | 8 | Alert-budget allocator and threshold regimes | pending |
 | 9 | Validation regimes and source-failure experiments | pending |
@@ -249,3 +250,21 @@ delete exactly the localities conventional sources already omit. Each ratio is
 therefore filled with a stated value and paired with an indicator column, so
 the condition is learnable rather than the row disappearing. On the 2016-2024
 Nigeria panel this keeps 100% of labelled rows against 16% before the fix.
+
+
+## Baselines
+
+```bash
+PYTHONPATH=src python -m hsre.models.run_baselines --data path/to/acled.xlsx
+```
+
+Writes `reports/tables/baseline_comparison.csv`. Results and interpretation
+are in `docs/baseline_results.md`.
+
+Splits are temporal, never random: neighbouring weeks in the same locality are
+strongly dependent, so random splitting leaks the future and inflates
+performance. Accuracy is not reported, because at a 27% base rate a model
+predicting no escalation everywhere scores 73%. Average precision is the
+headline metric, with lift against the base rate to expose no-skill models,
+and precision and recall at a fixed alert budget because that is what an
+institution can act on.
